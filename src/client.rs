@@ -1,36 +1,49 @@
 // SPDX-License-Identifier: Apache-2.0
-
-use hello_world::{HelloRequest, greeter_client::GreeterClient};
-
-pub mod hello_world {
+mod benchmark;
+mod hello_world {
     tonic::include_proto!("helloworld");
 }
 
+use self::{
+    benchmark::LhpncBenchmark,
+    hello_world::{HelloRequest, greeter_client::GreeterClient},
+};
+
+const REQUST_COUNT: usize = 10 * 1000 * 1000;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut bench = LhpncBenchmark::start("no_optimize");
     let mut client = GreeterClient::connect("http://[::1]:50051").await?;
 
     let outbound = async_stream::stream! {
-        let mut interval =
-            tokio::time::interval(std::time::Duration::from_secs(1));
         let mut count = 0;
 
         loop {
-            interval.tick().await;
             let request = HelloRequest {
                 name: format!("client_{count}"),
             };
             count +=1;
+            if count > REQUST_COUNT  {
+                break;
+            }
             yield request;
         }
     };
 
     let response = client.say_hello(tonic::Request::new(outbound)).await?;
     let mut inbound = response.into_inner();
+    let mut got_reply = 0;
 
-    while let Some(reply) = inbound.message().await? {
-        println!("RESPONSE={:?}", reply);
+    while inbound.message().await?.is_some() {
+        if got_reply > REQUST_COUNT {
+            break;
+        }
+        got_reply += 1;
     }
+    assert_eq!(got_reply, REQUST_COUNT);
+    bench.end();
+    println!("{}", serde_yaml::to_string(&bench)?);
 
     Ok(())
 }
