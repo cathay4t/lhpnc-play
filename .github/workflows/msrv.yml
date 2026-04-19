@@ -23,5 +23,10 @@ jobs:
     - name: Install Rust 1.88
       run: rustup install 1.88
 
+    - name: Install protobuf compiler
+      run: |
+        sudo apt-get update
+        sudo apt-get install protobuf-compiler -y
+
     - name: Build test
       run: cargo +1.88 build --ignore-rust-version

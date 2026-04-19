@@ -19,6 +19,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Install protobuf compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install protobuf-compiler -y
+
       - name: Install Rust Stable
         run: |
           rustup override set stable
