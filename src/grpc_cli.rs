@@ -11,7 +11,7 @@ use self::{
 
 const REQUST_COUNT: usize = 10 * 1000 * 1000;
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut bench = LhpncBenchmark::start("no_optimize");
     let mut client = GreeterClient::connect("http://[::1]:50051").await?;
@@ -41,9 +41,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         got_reply += 1;
     }
-    assert_eq!(got_reply, REQUST_COUNT);
-    bench.end();
-    println!("{}", serde_yaml::to_string(&bench)?);
+    if got_reply == REQUST_COUNT {
+        bench.end(REQUST_COUNT as u128);
+        println!("{}", serde_yaml::to_string(&bench)?);
+    } else {
+        eprintln!(
+            "Has missing reply, expected {REQUST_COUNT}, got {got_reply}"
+        );
+    }
 
     Ok(())
 }
